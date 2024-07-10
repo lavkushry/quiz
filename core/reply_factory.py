@@ -28,25 +28,54 @@ def generate_bot_responses(message, session):
     return bot_responses
 
 
-def record_current_answer(answer, current_question_id, session):
-    '''
-    Validates and stores the answer for the current question to django session.
-    '''
-    return True, ""
+def record_current_answer(user_id, answer):
+    # Validate the answer (this can be customized based on your validation logic)
+    if not answer:
+        return "Answer cannot be empty."
+
+    # Store the answer in the user's session or database
+    user_session = get_user_session(user_id)
+    current_question = user_session['current_question']
+    user_session['answers'][current_question] = answer
+
+    # Save the session
+    save_user_session(user_id, user_session)
+
+    return "Answer recorded."
 
 
-def get_next_question(current_question_id):
-    '''
-    Fetches the next question from the PYTHON_QUESTION_LIST based on the current_question_id.
-    '''
+def get_next_question(user_id):
+    user_session = get_user_session(user_id)
+    questions = user_session['questions']
+    current_index = user_session.get('current_index', 0)
 
-    return "dummy question", -1
+    if current_index < len(questions):
+        next_question = questions[current_index]
+        user_session['current_question'] = next_question
+        user_session['current_index'] = current_index + 1
+        save_user_session(user_id, user_session)
+        return next_question
+    else:
+        return None  # No more questions left
 
 
-def generate_final_response(session):
-    '''
-    Creates a final result message including a score based on the answers
-    by the user for questions in the PYTHON_QUESTION_LIST.
-    '''
+def generate_final_response(user_id):
+    user_session = get_user_session(user_id)
+    answers = user_session['answers']
+    correct_answers = 0
 
-    return "dummy result"
+    # Assuming we have a dictionary of correct answers
+    correct_answers_dict = {
+        'question1': 'answer1',
+        'question2': 'answer2',
+        # Add all correct answers here
+    }
+
+    for question, answer in answers.items():
+        if correct_answers_dict.get(question) == answer:
+            correct_answers += 1
+
+    total_questions = len(correct_answers_dict)
+    score = (correct_answers / total_questions) * 100
+
+    return f"Quiz completed! Your score is {score:.2f}%."
